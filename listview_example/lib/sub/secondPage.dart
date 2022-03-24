@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:listview_example/animalItem.dart';
 
+
+
 class SecondApp extends StatefulWidget {
   @override
   State<StatefulWidget> createState() => _SecondApp();
@@ -62,7 +64,9 @@ class _SecondApp extends State<SecondApp> {
                   ),
                   onTap: () {
                     _imagePath = 'repo/images/cow.png';
+
                   },
+
                 ),
                 GestureDetector(
                   child: Image.asset(
@@ -129,13 +133,15 @@ class _SecondApp extends State<SecondApp> {
                     animalName: nameController.value.text,
                     kind: getKind(_radioValue),
                     imagePath: _imagePath,
-                    flyExist: flyExist);
+                    flyExist: flyExist,
+                    fly: getFly(flyExist)
+                );
                 AlertDialog dialog = AlertDialog(
                   title: Text('동물 추가하기'),
                   content: Text(
-                    '이 동물은 ${animal.animalName}이며 종류는 ${animal.kind} 입니다.'
+                    '이 동물은 ${animal.fly} ${animal.animalName}이며\n종류는 ${animal.kind} 입니다.'
                     '\n이 동물을 추가하시겠습니까?',
-                    style: TextStyle(fontSize: 26.0),
+                    style: TextStyle(fontSize: 24.0),
                   ),
                   actions: [
                     ElevatedButton(
@@ -176,6 +182,14 @@ class _SecondApp extends State<SecondApp> {
         return "파충류";
       case 2:
         return "포유류";
+    }
+  }
+
+  getFly(bool? flyExist) {
+    if (flyExist == true) {
+      return "날 수 있는";
+    } else {
+      return "날 수 없는";
     }
   }
 }
