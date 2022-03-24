@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'sub/firstPage.dart';
 import 'sub/secondPage.dart';
 import 'animalItem.dart';
+import 'cupertinoMain.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(CupertinoMain());
 }
 
 class MyApp extends StatelessWidget {

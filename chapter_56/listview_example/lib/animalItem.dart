@@ -5,7 +5,7 @@ class Animal {
   String? animalName;
   String? kind;
   bool? flyExist = false;
-  String fly;
+  String? fly;
 
   Animal(
       {required this.animalName,
