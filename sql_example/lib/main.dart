@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sql_example/todo.dart';
+import 'addTodo.dart';
+import 'clearList.dart';
 
 void main() {
   runApp(MyApp());
@@ -9,20 +11,36 @@ void main() {
 
 class MyApp extends StatelessWidget {
   MyApp({Key? key}) : super(key: key);
-  Future<Database> database = initDatabase();
 
   @override
   Widget build(BuildContext context) {
+    Future<Database> database = initDatabase();
+
     return MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => DatabaseApp(database),
-          // '/add': (context) => AddTodoApp(database)
-        });
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => DatabaseApp(database),
+        '/add': (context) => AddTodoApp(database),
+        '/clear': (context) => ClearListApp(database)
+      },
+    );
+  }
+
+  Future<Database> initDatabase() async {
+    return openDatabase(
+      join(await getDatabasesPath(), 'todo_database.db'),
+      onCreate: (db, version) {
+        return db.execute(
+          "CREATE TABLE todos(id INTEGER PRIMARY KEY AUTOINCREMENT, "
+          "title TEXT, content TEXT, active INTEGER)",
+        );
+      },
+      version: 1,
+    ); //return
   }
 } //MyApp
 
@@ -49,6 +67,19 @@ class _DatabaseApp extends State<DatabaseApp> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Database Example'),
+        actions: <Widget>[
+          TextButton(
+              onPressed: () async {
+                await Navigator.of(context).pushNamed('/clear');
+                setState(() {
+                  todoList = getTodos();
+                });
+              },
+              child: Text(
+                '완료한 일',
+                style: TextStyle(color: Colors.white),
+              ))
+        ],
       ),
       body: Container(
         child: Center(
@@ -89,12 +120,18 @@ class _DatabaseApp extends State<DatabaseApp> {
                             ),
                           ),
                           onTap: () async {
+                            TextEditingController controller =
+                                new TextEditingController(text: todo.content);
+
                             Todo result = await showDialog(
                                 context: context,
                                 builder: (BuildContext context) {
                                   return AlertDialog(
                                     title: Text('${todo.id} : ${todo.title}'),
-                                    content: Text('Todo를 체크하시겠습니까?'),
+                                    content: TextField(
+                                      controller: controller,
+                                      keyboardType: TextInputType.text,
+                                    ),
                                     actions: <Widget>[
                                       TextButton(
                                           onPressed: () {
@@ -102,6 +139,8 @@ class _DatabaseApp extends State<DatabaseApp> {
                                               todo.active == 1
                                                   ? todo.active = 0
                                                   : todo.active = 1;
+                                              todo.content =
+                                                  controller.value.text;
                                             });
                                             Navigator.of(context).pop(todo);
                                           },
@@ -118,6 +157,31 @@ class _DatabaseApp extends State<DatabaseApp> {
 
                             _updateTodo(result); //showDialog
                           }, //onTap
+
+                          onLongPress: () async {
+                            Todo result = await showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: Text('${todo.id} : ${todo.title}'),
+                                    content: Text('${todo.content}를 삭제하시겠습니까?'),
+                                    actions: <Widget>[
+                                      TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop(todo);
+                                          },
+                                          child: Text('예')),
+                                      TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: Text('아니요')),
+                                    ],
+                                  );
+                                } //builder
+                                ); //result
+                            _deleteTodo(result);
+                          }, // onLongPress,
                         );
                       },
                       itemCount: (snapshot.data as List<Todo>).length,
@@ -132,17 +196,37 @@ class _DatabaseApp extends State<DatabaseApp> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final todo = await Navigator.of(context).pushNamed('/add');
-          if (todo != null) {
-            _insertTodo(todo as Todo);
-          }
-        },
-        child: Icon(Icons.add),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-    );
+      floatingActionButton: Column(
+          children: <Widget>[
+            FloatingActionButton(
+              onPressed: () async {
+                final todo = await Navigator.of(context).pushNamed('/add');
+                if (todo != null) {
+                  _insertTodo(todo as Todo);
+                }
+              },
+              heroTag: null,
+              child: Icon(Icons.add),
+        ),
+
+            SizedBox(height: 10,),
+
+            FloatingActionButton(
+              onPressed: () async {
+              _allUpdate();
+            },
+              heroTag: null,
+              child: Icon(Icons.update),),],
+            mainAxisAlignment: MainAxisAlignment.end,
+      ),);
+  }
+
+  void _allUpdate() async {
+    final Database database = await widget.db;
+    await database.rawUpdate('update todos set active = 1 where active = 0');
+    setState(() {
+      todoList = getTodos();
+    });
   }
 
   void _insertTodo(Todo todo) async {
@@ -168,17 +252,26 @@ class _DatabaseApp extends State<DatabaseApp> {
           id: maps[i]['id']);
     });
   }
-} //_DatabaseApp
 
-Future<Database> initDatabase() async {
-  return openDatabase(
-    join(await getDatabasesPath(), 'todo_database.db'),
-    onCreate: (db, version) {
-      return db.execute(
-        "CREATE TABLE todos(id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "title TEXT, content TEXT, active INTEGER)",
-      );
-    }, //oncreate end
-    version: 1,
-  ); //return
-}
+  void _updateTodo(Todo todo) async {
+    final Database database = await widget.db;
+    await database.update(
+      'todos',
+      todo.toMap(),
+      where: 'id = ?',
+      whereArgs: [todo.id],
+    );
+
+    setState(() {
+      todoList = getTodos();
+    });
+  }
+
+  void _deleteTodo(Todo todo) async {
+    final Database database = await widget.db;
+    await database.delete('todos', where: 'id=?', whereArgs: [todo.id]);
+    setState(() {
+      todoList = getTodos();
+    });
+  }
+} //_DatabaseApp

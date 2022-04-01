@@ -4,12 +4,12 @@ import 'todo.dart';
 
 class AddTodoApp extends StatefulWidget {
   final Future<Database> db;
-
   AddTodoApp(this.db);
 
   @override
   State<StatefulWidget> createState() => _AddTodoApp();
 } //AddTodo
+
 
 class _AddTodoApp extends State<AddTodoApp> {
   TextEditingController? titleController;
